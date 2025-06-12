@@ -9,6 +9,13 @@ import type { RefObject } from 'react'
 const LayoutHandlers = new WeakMap<HTMLElement, Function>()
 const Nodes = new Set<HTMLElement>()
 
+type LayoutMeasurementStatus = 'inactive' | 'active'
+
+let status: LayoutMeasurementStatus = 'active'
+export function setOnLayoutStrategy(state: LayoutMeasurementStatus) {
+  status = state
+}
+
 export type LayoutValue = {
   x: number
   y: number
@@ -36,6 +43,10 @@ if (isClient) {
     // prevent thrashing during first hydration (somewhat, streaming gets trickier)
     let avoidUpdates = true
     const queuedUpdates = new Map<HTMLElement, Function>()
+
+    // track frame timing to detect sync work and avoid updates during heavy periods
+    let lastFrameAt = Date.now()
+    const numDroppedFramesUntilPause = 2 // adjust sensitivity
 
     ___onDidFinishClientRender(() => {
       avoidUpdates = false
@@ -78,7 +89,20 @@ if (isClient) {
     // note that getBoundingClientRect() does not thrash layout if its after an animation frame
     rAF!(layoutOnAnimationFrame)
     function layoutOnAnimationFrame() {
-      Nodes.forEach(updateLayoutIfChanged)
+      const now = Date.now()
+      const timeSinceLastFrame = now - lastFrameAt
+      lastFrameAt = now
+
+      if (status !== 'inactive') {
+        // avoid updates if we've been dropping frames (indicates sync work happening)
+        const expectedFrameTime = 16.67 // ~60fps
+        const hasRecentSyncWork =
+          timeSinceLastFrame > expectedFrameTime * numDroppedFramesUntilPause
+
+        if (!hasRecentSyncWork) {
+          Nodes.forEach(updateLayoutIfChanged)
+        }
+      }
       rAF!(layoutOnAnimationFrame)
     }
   } else {
