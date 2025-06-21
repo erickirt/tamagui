@@ -230,10 +230,7 @@ export function createComponent<
       contextValue = React.useContext(context)
 
       if (contextValue) {
-        if (
-          process.env.NODE_ENV === 'development' &&
-          defaultProps?.['debug'] === 'verbose'
-        ) {
+        if (process.env.NODE_ENV === 'development' && propsIn?.['debug'] === 'verbose') {
           log(` 👇 contextValue`, contextValue)
         }
 
@@ -361,6 +358,7 @@ export function createComponent<
       supportsCSSVars,
       willBeAnimated,
       willBeAnimatedClient,
+      startedUnhydrated,
     } = useComponentState(props, componentContext, staticConfig, config!)
 
     if (process.env.NODE_ENV === 'development' && time) time`use-state`
@@ -513,6 +511,7 @@ export function createComponent<
       null,
       componentContext,
       elementType,
+      startedUnhydrated,
       debugProp
     )
 
@@ -694,7 +693,9 @@ export function createComponent<
     // if its a layout effect it will just skip that first <render >output
     const { pseudoGroups, mediaGroups } = splitStyles
 
-    const unPress = () => setStateShallow({ press: false, pressIn: false })
+    const unPress = () => {
+      setStateShallow({ press: false, pressIn: false })
+    }
 
     if (process.env.NODE_ENV === 'development' && isWeb) {
       useIsomorphicLayoutEffect(() => {
@@ -797,8 +798,11 @@ export function createComponent<
         onBlur ||
         !!componentContext.setParentFocusState
     )
+
+    const hasDynamicGroupChildren = Boolean(groupName && state.hasDynGroupChildren)
+
     const attachPress = Boolean(
-      groupName ||
+      hasDynamicGroupChildren ||
         runtimePressStyle ||
         onPress ||
         onPressOut ||
@@ -810,11 +814,10 @@ export function createComponent<
         pseudos?.focusVisibleStyle
     )
     const runtimeHoverStyle = !disabled && noClass && pseudos?.hoverStyle
-    const needsHoverState = Boolean(
-      groupName || runtimeHoverStyle || onHoverIn || onHoverOut
-    )
+    const needsHoverState = Boolean(hasDynamicGroupChildren || runtimeHoverStyle)
     const attachHover =
-      isWeb && !!(groupName || needsHoverState || onMouseEnter || onMouseLeave)
+      isWeb &&
+      !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave)
 
     // check presence rather than value to prevent reparenting bugs
     // allows for onPress={x ? function : undefined} without re-ordering dom
@@ -830,7 +833,7 @@ export function createComponent<
           runtimeFocusStyle
       )
 
-    const needsPressState = Boolean(groupName || runtimePressStyle)
+    const needsPressState = Boolean(hasDynamicGroupChildren || runtimePressStyle)
 
     if (process.env.NODE_ENV === 'development' && time) time`events-setup`
 
@@ -891,7 +894,7 @@ export function createComponent<
           }),
           onPressIn: attachPress
             ? (e) => {
-                if (runtimePressStyle || groupName) {
+                if (needsPressState) {
                   setStateShallow({
                     press: true,
                     pressIn: true,
@@ -1132,11 +1135,14 @@ export function createComponent<
       )
     }
 
+    if (process.env.NODE_ENV === 'development' && time) time`context-override`
+
     // add in <style> tags inline
-    const { rulesToInsert } = splitStyles
-    if (process.env.TAMAGUI_TARGET === 'web' && process.env.TAMAGUI_REACT_19) {
-      content = wrapStyleTags(Object.values(rulesToInsert), content)
+    if (process.env.TAMAGUI_TARGET === 'web' && startedUnhydrated) {
+      content = wrapStyleTags(Object.values(splitStyles.rulesToInsert), content)
     }
+
+    if (process.env.NODE_ENV === 'development' && time) time`style-tags`
 
     if (process.env.NODE_ENV === 'development') {
       if (debugProp && debugProp !== 'profile') {

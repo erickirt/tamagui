@@ -17,7 +17,7 @@ import { createContext, createContextScope } from '@tamagui/create-context'
 import type { DismissableProps } from '@tamagui/dismissable'
 import { Dismissable } from '@tamagui/dismissable'
 import type { FocusScopeProps } from '@tamagui/focus-scope'
-import { FocusScope } from '@tamagui/focus-scope'
+import { FocusScope, FocusScopeController } from '@tamagui/focus-scope'
 import { composeEventHandlers, withStaticProperties } from '@tamagui/helpers'
 import { Portal, PortalItem, resolveViewZIndex } from '@tamagui/portal'
 import { RemoveScroll } from '@tamagui/remove-scroll'
@@ -409,8 +409,7 @@ const DialogContent = DialogContentFrame.extractable(
 
 /* -----------------------------------------------------------------------------------------------*/
 
-interface DialogContentTypeProps
-  extends Omit<DialogContentImplProps, 'trapFocus' | 'disableOutsidePointerEvents'> {
+interface DialogContentTypeProps extends DialogContentImplProps {
   context: DialogContextValue
 }
 
@@ -882,6 +881,7 @@ const Dialog = withStaticProperties(
     Description: DialogDescription,
     Close: DialogClose,
     Sheet: Sheet.Controlled,
+    FocusScope: FocusScopeController,
     Adapt,
   }
 )

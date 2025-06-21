@@ -1,6 +1,6 @@
 {
   "name": "@tamagui/portal",
-  "version": "1.126.14",
+  "version": "1.128.0",
   "source": "src/index.ts",
   "types": "./types/index.d.ts",
   "main": "dist/cjs",
@@ -43,7 +43,7 @@
   "devDependencies": {
     "@tamagui/build": "workspace:*",
     "@types/react-dom": "^19.0.3",
-    "react-native": "^0.76.5"
+    "react-native": "^0.79.2"
   },
   "publishConfig": {
     "access": "public"

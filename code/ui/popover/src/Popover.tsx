@@ -30,7 +30,7 @@ import {
 import type { DismissableProps } from '@tamagui/dismissable'
 import { FloatingOverrideContext } from '@tamagui/floating'
 import type { FocusScopeProps } from '@tamagui/focus-scope'
-import { FocusScope } from '@tamagui/focus-scope'
+import { FocusScope, FocusScopeController } from '@tamagui/focus-scope'
 import { composeEventHandlers, withStaticProperties } from '@tamagui/helpers'
 import type {
   PopperArrowExtraProps,
@@ -50,13 +50,14 @@ import {
 import { Portal, resolveViewZIndex } from '@tamagui/portal'
 import type { RemoveScrollProps } from '@tamagui/remove-scroll'
 import { RemoveScroll } from '@tamagui/remove-scroll'
+import { ScrollView, type ScrollViewProps } from '@tamagui/scroll-view'
 import { Sheet, SheetController } from '@tamagui/sheet'
 import type { YStackProps } from '@tamagui/stacks'
 import { YStack } from '@tamagui/stacks'
 import { useControllableState } from '@tamagui/use-controllable-state'
 import { StackZIndexContext } from '@tamagui/z-index-stack'
 import * as React from 'react'
-import { Platform, ScrollView } from 'react-native'
+import { Platform } from 'react-native'
 import { useFloatingContext } from './useFloatingContext'
 
 // adapted from radix-ui popover
@@ -443,24 +444,13 @@ const PopoverContentImpl = React.forwardRef<
   let contents = <ResetPresence>{children}</ResetPresence>
 
   if (context.breakpointActive) {
-    // unwrap the PopoverScrollView if used, as it will use the SheetScrollView if that exists
-    // TODO this should be disabled through context
-    const childrenWithoutScrollView = React.Children.toArray(children).map((child) => {
-      if (React.isValidElement(child)) {
-        if (child.type === ScrollView) {
-          return child.props.children
-        }
-      }
-      return child
-    })
-
     return (
       <AdaptPortalContents>
         <PopperContext.Provider
           scope={__scopePopover || POPOVER_SCOPE}
           {...popperContext}
         >
-          {childrenWithoutScrollView}
+          {children}
         </PopperContext.Provider>
       </AdaptPortalContents>
     )
@@ -594,6 +584,22 @@ export type Popover = {
   setOpen: (open: boolean) => void
 }
 
+const PopoverScrollView = React.forwardRef<ScrollView, ScrollViewProps>(
+  (props: ScrollViewProps, ref) => {
+    const context = usePopoverContext(POPOVER_SCOPE)
+
+    return (
+      <ScrollView
+        ref={ref}
+        // when adapted, no pointer events!
+        pointerEvents={context.breakpointActive ? 'none' : undefined}
+        scrollEnabled={!context.breakpointActive}
+        {...props}
+      />
+    )
+  }
+)
+
 export const Popover = withStaticProperties(
   React.forwardRef<Popover, ScopedPopoverProps<PopoverProps>>(
     function Popover(props, ref) {
@@ -613,8 +619,9 @@ export const Popover = withStaticProperties(
     Content: PopoverContent,
     Close: PopoverClose,
     Adapt,
-    ScrollView: ScrollView,
+    ScrollView: PopoverScrollView,
     Sheet: Sheet.Controlled,
+    FocusScope: FocusScopeController,
   }
 )
 
